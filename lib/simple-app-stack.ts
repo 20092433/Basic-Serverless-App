@@ -68,6 +68,31 @@ export class SimpleAppStack extends cdk.Stack {
       }
     );
 
+    //Add a new lambda function to handle the scan operation
+    const getAllMoviesFn = new lambdanode.NodejsFunction(this, "GetAllMoviesFn", {
+      architecture: lambda.Architecture.ARM_64,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      entry: `${__dirname}/../lambdas/getAllMovies.ts`, // You'll create this file in the next step
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 128,
+      environment: {
+        TABLE_NAME: moviesTable.tableName,  // Pass the DynamoDB table name
+        REGION: 'eu-west-1',
+      },
+    });
+
+    //expose this lambda function publicly by creating a URL for it
+    const getAllMoviesURL = getAllMoviesFn.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE,  // No authentication for testing purposes
+      cors: {
+        allowedOrigins: ["*"],  // Allow CORS requests from all origins
+      },
+    });
+    
+    // Output the URL for accessing the function
+    new cdk.CfnOutput(this, "Get All Movies Function URL", { value: getAllMoviesURL.url });
+    
+
     const getMovieByIdURL = getMovieByIdFn.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,
       cors: {
@@ -75,7 +100,8 @@ export class SimpleAppStack extends cdk.Stack {
       },
     });
 
-    moviesTable.grantReadData(getMovieByIdFn)
+    moviesTable.grantReadData(getAllMoviesFn);
+    //moviesTable.grantReadData(getMovieByIdFn)
 
     new cdk.CfnOutput(this, "Get Movie Function Url", { value: getMovieByIdURL.url });
 
